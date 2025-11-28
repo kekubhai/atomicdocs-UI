@@ -1,0 +1,85 @@
+name: Build Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            output: atomicdocs-win-x64.exe
+          - goos: windows
+            goarch: arm64
+            output: atomicdocs-win-arm64.exe
+          - goos: darwin
+            goarch: amd64
+            output: atomicdocs-darwin-x64
+          - goos: darwin
+            goarch: arm64
+            output: atomicdocs-darwin-arm64
+          - goos: linux
+            goarch: amd64
+            output: atomicdocs-linux-x64
+          - goos: linux
+            goarch: arm64
+            output: atomicdocs-linux-arm64
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w" -o npm/atomicdocs/bin/${{ matrix.output }} cmd/server/main.go
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: npm/atomicdocs/bin/${{ matrix.output }}
+          retention-days: 1
+
+  package:
+    name: Package for NPM
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: npm/atomicdocs/bin/
+      
+      - name: Move binaries to correct location
+        run: |
+          mkdir -p npm/atomicdocs/bin
+          find npm/atomicdocs/bin -type f -name "atomicdocs-*" -exec mv {} npm/atomicdocs/bin/ \;
+          find npm/atomicdocs/bin -type d -empty -delete
+          ls -lh npm/atomicdocs/bin/
+      
+      - name: Make binaries executable
+        run: chmod +x npm/atomicdocs/bin/atomicdocs-*
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: npm/atomicdocs/
+          retention-days: 7

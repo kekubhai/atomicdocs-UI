@@ -9,10 +9,36 @@ const __dirname = dirname(__filename);
 let goServer = null;
 let serverReady = false;
 
+function getBinaryName() {
+  const platform = process.platform;
+  const arch = process.arch;
+  
+  const platformMap = {
+    'win32': 'win',
+    'darwin': 'darwin',
+    'linux': 'linux'
+  };
+  
+  const archMap = {
+    'x64': 'x64',
+    'arm64': 'arm64'
+  };
+  
+  const mappedPlatform = platformMap[platform];
+  const mappedArch = archMap[arch];
+  
+  if (!mappedPlatform || !mappedArch) {
+    throw new Error(`Unsupported platform: ${platform}-${arch}`);
+  }
+  
+  const ext = platform === 'win32' ? '.exe' : '';
+  return `atomicdocs-${mappedPlatform}-${mappedArch}${ext}`;
+}
+
 function startGoServer() {
   if (goServer) return;
   
-  const binaryName = process.platform === 'win32' ? 'atomicdocs-final-v2.exe' : 'atomicdocs-final-v2';
+  const binaryName = getBinaryName();
   const binaryPath = join(__dirname, '..', 'atomicdocs', 'bin', binaryName);
   
   goServer = spawn(binaryPath, [], { 
@@ -27,12 +53,10 @@ function startGoServer() {
 function extractHandlerCode(app) {
   const routes = [];
   
-  // Access Hono's internal routes
   if (app.routes) {
     app.routes.forEach((route) => {
       let handlerCode = '';
       
-      // Extract handler function code
       if (route.handler && typeof route.handler === 'function') {
         handlerCode = route.handler.toString();
       }
@@ -54,8 +78,6 @@ function registerRoutes(routes, port) {
     return;
   }
   
-  console.log(`Sending ${routes.length} routes to Go server...`);
-  
   const data = JSON.stringify({ routes, port });
   const req = http.request({
     hostname: 'localhost',
@@ -66,18 +88,9 @@ function registerRoutes(routes, port) {
       'Content-Type': 'application/json',
       'Content-Length': data.length
     }
-  }, (res) => {
-    let body = '';
-    res.on('data', chunk => body += chunk);
-    res.on('end', () => {
-      console.log('✓ Registered with AtomicDocs:', body);
-    });
   });
   
-  req.on('error', (err) => {
-    console.error('✗ Failed to register:', err.message);
-  });
-  
+  req.on('error', () => {});
   req.write(data);
   req.end();
 }
@@ -88,6 +101,7 @@ export function atomicDocs(app, port) {
   setTimeout(() => {
     const routes = extractHandlerCode(app);
     registerRoutes(routes, port);
+    console.log(`✓ Registered ${routes.length} routes with AtomicDocs`);
   }, 1000);
   
   return async (c, next) => {

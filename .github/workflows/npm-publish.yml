@@ -1,0 +1,64 @@
+name: Publish to NPM
+
+on:
+  workflow_run:
+    workflows: ["Build Release Binaries"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: npm/atomicdocs/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      
+      - name: Verify binaries exist
+        run: |
+          ls -lh npm/atomicdocs/bin/
+          echo "Binary count: $(ls npm/atomicdocs/bin/ | wc -l)"
+          if [ $(ls npm/atomicdocs/bin/ | wc -l) -lt 6 ]; then
+            echo "Error: Not all binaries present"
+            exit 1
+          fi
+      
+      - name: Update package version
+        working-directory: npm/atomicdocs
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          if [ -z "$VERSION" ]; then
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          npm version $VERSION --no-git-tag-version
+      
+      - name: Publish to NPM
+        working-directory: npm/atomicdocs
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Publish Hono package
+        working-directory: npm/atomicdocs-hono
+        run: |
+          npm version $VERSION --no-git-tag-version
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${GITHUB_REF#refs/tags/v}
