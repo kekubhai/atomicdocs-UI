@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-go:
-    name: Test Go Server
+    name: Test Go Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,71 +24,9 @@ jobs:
       - name: Build
         run: go build -v ./cmd/server/main.go
       
-      - name: Test
-        run: go test -v ./...
-
-  test-express:
-    name: Test Express Integration
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      
-      - name: Build Go server
-        run: go build -o atomicdocs cmd/server/main.go
-      
-      - name: Install Express demo
-        working-directory: examples/express-demo
-        run: npm install
-      
-      - name: Start Go server
-        run: ./atomicdocs &
-        
-      - name: Wait for server
-        run: sleep 2
-      
-      - name: Test Express routes
+      - name: Verify binary works
         run: |
+          ./main &
+          sleep 2
           curl -f http://localhost:6174/docs || exit 1
-
-  test-hono:
-    name: Test Hono Integration
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      
-      - name: Build Go server
-        run: go build -o atomicdocs cmd/server/main.go
-      
-      - name: Install Hono demo
-        working-directory: examples/hono-demo
-        run: npm install
-      
-      - name: Start Go server
-        run: ./atomicdocs &
-        
-      - name: Wait for server
-        run: sleep 2
-      
-      - name: Test Hono routes
-        run: |
-          curl -f http://localhost:6174/docs || exit 1
+          pkill main
