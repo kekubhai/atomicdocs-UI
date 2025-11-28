@@ -1,6 +1,6 @@
 {
   "name": "atomicdocs-hono",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Auto-generated API documentation for Hono",
   "main": "index.mjs",
   "type": "module",
