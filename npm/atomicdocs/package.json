@@ -3,16 +3,18 @@
   "version": "1.0.2",
   "description": "Auto-generated API documentation for Express.js and Hono",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "postinstall": "node install.js || echo 'AtomicDocs postinstall failed - you may need to run it manually'"
   },
   "files": [
     "index.js",
+    "index.d.ts",
     "install.js"
   ],
   "os": ["darwin", "linux", "win32"],
   "cpu": ["x64", "arm64"],
-  "keywords": ["express", "hono", "swagger", "documentation", "api", "openapi"],
+  "keywords": ["express", "hono", "swagger", "documentation", "api", "openapi", "typescript"],
   "author": "",
   "license": "MIT",
   "repository": {
