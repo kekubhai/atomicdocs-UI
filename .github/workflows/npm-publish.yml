@@ -2,7 +2,7 @@ name: Publish to NPM
 
 on:
   workflow_run:
-    workflows: ["Build Release Binaries"]
+    workflows: ["Build and Release Binaries"]
     types:
       - completed
   workflow_dispatch:
@@ -21,23 +21,6 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-      
-      - name: Download package artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: npm-package
-          path: npm/atomicdocs/
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-      
-      - name: Verify binaries exist
-        run: |
-          ls -lh npm/atomicdocs/bin/
-          echo "Binary count: $(ls npm/atomicdocs/bin/ | wc -l)"
-          if [ $(ls npm/atomicdocs/bin/ | wc -l) -lt 6 ]; then
-            echo "Error: Not all binaries present"
-            exit 1
-          fi
       
       - name: Update package version
         working-directory: npm/atomicdocs

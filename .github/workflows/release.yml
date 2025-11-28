@@ -1,4 +1,4 @@
-name: Build Release Binaries
+name: Build and Release Binaries
 
 on:
   push:
@@ -46,40 +46,41 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          go build -ldflags="-s -w" -o npm/atomicdocs/bin/${{ matrix.output }} cmd/server/main.go
+          go build -ldflags="-s -w" -o ${{ matrix.output }} cmd/server/main.go
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.output }}
-          path: npm/atomicdocs/bin/${{ matrix.output }}
+          path: ${{ matrix.output }}
           retention-days: 1
 
-  package:
-    name: Package for NPM
+  release:
+    name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       
       - name: Download all binaries
         uses: actions/download-artifact@v4
         with:
-          path: npm/atomicdocs/bin/
+          path: binaries/
       
-      - name: Move binaries to correct location
+      - name: Move binaries to root
         run: |
-          mkdir -p npm/atomicdocs/bin
-          find npm/atomicdocs/bin -type f -name "atomicdocs-*" -exec mv {} npm/atomicdocs/bin/ \;
-          find npm/atomicdocs/bin -type d -empty -delete
-          ls -lh npm/atomicdocs/bin/
+          mkdir -p release-binaries
+          find binaries -type f -name "atomicdocs-*" -exec mv {} release-binaries/ \;
+          ls -lh release-binaries/
       
-      - name: Make binaries executable
-        run: chmod +x npm/atomicdocs/bin/atomicdocs-*
-      
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: npm-package
-          path: npm/atomicdocs/
-          retention-days: 7
+          files: release-binaries/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
