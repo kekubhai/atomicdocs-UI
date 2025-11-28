@@ -15,6 +15,8 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -22,14 +24,17 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
       
-      - name: Update package version
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
+      - name: Update atomicdocs version
         working-directory: npm/atomicdocs
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          if [ -z "$VERSION" ]; then
-            VERSION=$(node -p "require('./package.json').version")
-          fi
-          npm version $VERSION --no-git-tag-version
+          npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
       
       - name: Publish atomicdocs to NPM
         working-directory: npm/atomicdocs
@@ -40,11 +45,7 @@ jobs:
       - name: Update atomicdocs-hono version
         working-directory: npm/atomicdocs-hono
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          if [ -z "$VERSION" ]; then
-            VERSION="1.0.0"
-          fi
-          npm version $VERSION --no-git-tag-version
+          npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
       
       - name: Publish atomicdocs-hono to NPM
         working-directory: npm/atomicdocs-hono
