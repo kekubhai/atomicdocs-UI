@@ -5,10 +5,11 @@ import (
 )
 
 type Spec struct {
-	OpenAPI string                `json:"openapi"`
-	Info    Info                  `json:"info"`
-	Servers []Server              `json:"servers"`
-	Paths   map[string]PathItem   `json:"paths"`
+	OpenAPI    string                `json:"openapi"`
+	Info       Info                  `json:"info"`
+	Servers    []Server              `json:"servers"`
+	Paths      map[string]PathItem   `json:"paths"`
+	Components *Components           `json:"components,omitempty"`
 }
 
 type Info struct {
@@ -20,6 +21,10 @@ type Info struct {
 type Server struct {
 	URL         string `json:"url"`
 	Description string `json:"description,omitempty"`
+}
+
+type Components struct {
+	Schemas map[string]types.Schema `json:"schemas"`
 }
 
 type PathItem struct {
@@ -41,13 +46,10 @@ type Operation struct {
 
 func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 	paths := make(map[string]PathItem)
+	schemas := make(map[string]types.Schema)
 	
 	for _, route := range routes {
-		if paths[route.Path].Get == nil && paths[route.Path].Post == nil &&
-			paths[route.Path].Put == nil && paths[route.Path].Delete == nil &&
-			paths[route.Path].Patch == nil {
-			paths[route.Path] = PathItem{}
-		}
+		item := paths[route.Path]
 		
 		op := &Operation{
 			Summary:     route.Summary,
@@ -61,10 +63,22 @@ func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 		if op.Responses == nil {
 			op.Responses = map[string]types.Response{
 				"200": {Description: "Successful response"},
+				"400": {Description: "Bad request"},
+				"404": {Description: "Not found"},
 			}
 		}
 		
-		item := paths[route.Path]
+		// Extract schemas from request body
+		if route.RequestBody != nil {
+			for contentType, mediaType := range route.RequestBody.Content {
+				if contentType == "application/json" && mediaType.Schema.Properties != nil {
+					schemaName := route.Method + route.Path
+					schemaName = sanitizeSchemaName(schemaName)
+					schemas[schemaName] = mediaType.Schema
+				}
+			}
+		}
+		
 		switch route.Method {
 		case "GET":
 			item.Get = op
@@ -80,6 +94,11 @@ func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 		paths[route.Path] = item
 	}
 	
+	var components *Components
+	if len(schemas) > 0 {
+		components = &Components{Schemas: schemas}
+	}
+	
 	return &Spec{
 		OpenAPI: "3.0.0",
 		Info: Info{
@@ -87,7 +106,18 @@ func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 			Description: "Auto-generated API documentation",
 			Version:     "1.0.0",
 		},
-		Servers: []Server{{URL: baseURL}},
-		Paths:   paths,
+		Servers:    []Server{{URL: baseURL}},
+		Paths:      paths,
+		Components: components,
 	}
+}
+
+func sanitizeSchemaName(name string) string {
+	result := ""
+	for _, c := range name {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
+			result += string(c)
+		}
+	}
+	return result
 }

@@ -3,6 +3,7 @@ package types
 type RouteInfo struct {
 	Method      string              `json:"method"`
 	Path        string              `json:"path"`
+	Handler     string              `json:"handler"`
 	Summary     string              `json:"summary,omitempty"`
 	Description string              `json:"description,omitempty"`
 	Tags        []string            `json:"tags,omitempty"`

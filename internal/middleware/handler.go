@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/valyala/fasthttp"
 	"github.com/yourusername/atomicdocs/internal/openapi"
+	"github.com/yourusername/atomicdocs/internal/parser"
 	"github.com/yourusername/atomicdocs/internal/registry"
 	"github.com/yourusername/atomicdocs/internal/types"
 )
@@ -38,7 +39,12 @@ func (h *Handler) RegisterRoutes(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	
-	h.registry.RegisterApp(payload.Port, payload.Routes)
+	analyzedRoutes := make([]types.RouteInfo, len(payload.Routes))
+	for i, route := range payload.Routes {
+		analyzedRoutes[i] = parser.AnalyzeRoute(route)
+	}
+	
+	h.registry.RegisterApp(payload.Port, analyzedRoutes)
 	ctx.SetStatusCode(fasthttp.StatusOK)
 	ctx.SetBodyString(`{"status":"registered"}`)
 }
