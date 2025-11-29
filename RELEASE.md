@@ -1,182 +1,163 @@
-# Release Process
+# AtomicDocs v1.0.0 - Final Release
+
+> 🎉 **This is the stable v1.0.0 release of AtomicDocs!**
 
 ## Overview
 
-AtomicDocs uses GitHub Actions to automatically build cross-platform binaries and publish to NPM. This ensures users can install the package without needing Go installed on their machine.
+AtomicDocs is a zero-config, auto-generated API documentation tool for Express.js and Hono frameworks. Built with Go and fasthttp for extreme performance.
+
+## Installation
+
+```bash
+npm install atomicdocs
+```
+
+That's it! No Go installation required. The binary is automatically downloaded during installation.
+
+## Quick Start
+
+### Express.js
+
+```javascript
+const express = require('express');
+const atomicdocs = require('atomicdocs');
+
+const app = express();
+app.use(express.json());
+app.use(atomicdocs());
+
+app.get('/users', (req, res) => res.json([{ id: 1, name: 'John' }]));
+app.post('/users', (req, res) => res.status(201).json({ id: 2, ...req.body }));
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server: http://localhost:${PORT}`);
+  console.log(`Docs: http://localhost:${PORT}/docs`);
+  atomicdocs.register(app, PORT);
+});
+```
+
+### Hono
+
+```typescript
+import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+import atomicdocs from 'atomicdocs';
+
+const app = new Hono();
+const PORT = 3000;
+
+app.use('*', atomicdocs(app, PORT));
+
+app.get('/users', (c) => c.json([{ id: 1, name: 'Alice' }]));
+app.post('/users', async (c) => c.json({ id: 2, ...(await c.req.json()) }, 201));
+
+serve({ fetch: app.fetch, port: PORT }, () => {
+  console.log(`Server: http://localhost:${PORT}`);
+  console.log(`Docs: http://localhost:${PORT}/docs`);
+});
+```
+
+---
 
 ## Architecture
 
 ```
-User installs npm package (npm install atomicdocs)
-    ↓
-postinstall script downloads binary from GitHub Release
-    ↓
-Binary saved to node_modules/atomicdocs/bin/
-    ↓
-JavaScript detects user's OS/architecture
-    ↓
-Spawns correct binary (Windows/macOS/Linux, x64/arm64)
-    ↓
-Go server runs on localhost:6174
-    ↓
-User's Express/Hono app sends routes to Go server
-    ↓
-Go analyzes code and generates OpenAPI spec
-    ↓
-Swagger UI served at /docs
+┌─────────────────────────────────────────────────────────────┐
+│              npm install atomicdocs                         │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│    postinstall downloads binary from GitHub Release         │
+│    Binary saved to node_modules/atomicdocs/bin/             │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│    JavaScript auto-detects OS/architecture                  │
+│    Spawns correct binary (Win/macOS/Linux, x64/arm64)       │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│    Go server runs on localhost:6174                         │
+│    Express/Hono app sends routes to Go server               │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│    Go analyzes code and generates OpenAPI 3.0 spec          │
+│    Swagger UI served at /docs                               │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## Supported Platforms
 
-- **Windows**: x64, arm64
-- **macOS**: x64 (Intel), arm64 (M1/M2/M3)
-- **Linux**: x64, arm64
-
-## CI/CD Workflows
-
-### 1. Test Workflow (`test.yml`)
-
-**Triggers:** Push to main/develop, Pull Requests
-
-**What it does:**
-- Builds Go server
-- Runs Go tests
-- Tests Express.js integration
-- Tests Hono integration
-- Validates /docs endpoint works
-
-**Purpose:** Ensure code quality before merging
+| Platform | Architecture | Binary |
+|----------|-------------|--------|
+| Windows  | x64         | `atomicdocs-win-x64.exe` |
+| Windows  | arm64       | `atomicdocs-win-arm64.exe` |
+| macOS    | x64 (Intel) | `atomicdocs-darwin-x64` |
+| macOS    | arm64 (M1/M2/M3) | `atomicdocs-darwin-arm64` |
+| Linux    | x64         | `atomicdocs-linux-x64` |
+| Linux    | arm64       | `atomicdocs-linux-arm64` |
 
 ---
 
-### 2. Release Workflow (`release.yml`)
+## Features
 
-**Triggers:** Git tag push (e.g., `v1.0.0`)
+### ✅ Core Features
 
-**What it does:**
-1. Checks out code
-2. Sets up Go 1.22
-3. Builds 6 binaries in parallel:
-   - `atomicdocs-win-x64.exe`
-   - `atomicdocs-win-arm64.exe`
-   - `atomicdocs-darwin-x64`
-   - `atomicdocs-darwin-arm64`
-   - `atomicdocs-linux-x64`
-   - `atomicdocs-linux-arm64`
-4. Strips debug symbols (`-ldflags="-s -w"`) for smaller size
-5. Creates GitHub Release and uploads binaries as assets
+| Feature | Description |
+|---------|-------------|
+| 🚀 Zero-config | Just `app.use(atomicdocs())` - no manual route definitions |
+| 🔍 Auto route detection | Discovers all GET/POST/PUT/DELETE/PATCH routes automatically |
+| 📝 Schema extraction | Analyzes handler code for request/response parameters |
+| 📋 OpenAPI 3.0 | Generates valid OpenAPI 3.0 JSON specification |
+| 🎯 Swagger UI | Interactive UI with "Try it out" functionality |
+| 🧪 Real-time testing | Test APIs directly from browser |
+| 💻 Cross-platform | Windows, macOS, Linux (x64 & arm64) |
+| ⚡ Blazing fast | Built with Go and fasthttp |
+| 📦 Lightweight | Minimal memory footprint |
 
-**Purpose:** Build production-ready binaries and create GitHub Release
+### ✅ Schema Detection
 
----
+| Detection | Example |
+|-----------|---------|
+| Express body | `const { x, y } = req.body` |
+| Hono body | `const { x, y } = await c.req.json()` |
+| Path parameters | `:id`, `:userId` |
+| Type inference | `age` → integer, `price` → number |
+| Example values | `email` → `user@example.com` |
 
-### 3. NPM Publish Workflow (`npm-publish.yml`)
+### ✅ HTTP Methods Supported
 
-**Triggers:** After `release.yml` completes successfully (via `workflow_run`)
+- `GET` - List and retrieve resources
+- `POST` - Create new resources
+- `PUT` - Update existing resources
+- `DELETE` - Remove resources
+- `PATCH` - Partial updates
 
-**What it does:**
-1. Waits for Release workflow to complete successfully
-2. Gets version from git tag
-3. Updates package version
-4. Publishes `atomicdocs` package to NPM
+### ✅ Response Codes Documented
 
-**Purpose:** Distribute package to NPM registry
-
----
-
-## How to Release
-
-### Step 1: Update Version
-
-```bash
-# Update version in package.json
-cd npm/atomicdocs
-npm version 1.0.0 --no-git-tag-version
-```
-
-### Step 2: Commit Changes
-
-```bash
-git add .
-git commit -m "Release v1.0.0"
-git push origin main
-```
-
-### Step 3: Create Git Tag
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-### Step 4: Wait for CI/CD
-
-1. **release.yml** runs (~5 minutes)
-   - Builds all binaries
-   - Creates artifacts
-
-2. **npm-publish.yml** runs (~2 minutes)
-   - Downloads binaries
-   - Publishes to NPM
-
-### Step 5: Verify
-
-```bash
-npm view atomicdocs version
-```
-
----
-
-## GitHub Secrets Required
-
-Add these secrets in GitHub repo settings:
-
-- `NPM_TOKEN`: NPM access token for publishing
-  - Get from: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
-  - Type: Automation token
+- `200` - OK
+- `201` - Created
+- `400` - Bad Request
+- `401` - Unauthorized
+- `404` - Not Found
 
 ---
 
 ## Package Structure
 
-### atomicdocs (Main Package - supports Express & Hono)
-
 ```
 atomicdocs/
-├── index.js              # Auto-detects Express/Hono
+├── index.js              # Main entry - auto-detects Express/Hono
+├── index.d.ts            # TypeScript definitions
 ├── install.js            # Downloads binary from GitHub Release
-└── package.json
+├── package.json
+└── bin/
+    └── atomicdocs-*      # Platform-specific binary (downloaded)
 ```
-
-**Note:** Binaries are downloaded from GitHub Releases at install time, not bundled in the npm package.
-
----
-
-## User Installation
-
-### Express.js
-
-```bash
-npm install atomicdocs
-```
-
-```javascript
-const atomicdocs = require('atomicdocs');
-app.use(atomicdocs());
-```
-
-### Hono
-
-```bash
-npm install atomicdocs
-```
-
-```typescript
-import atomicdocs from 'atomicdocs';
-app.use('*', atomicdocs(app, 3000));
-```
-
-**No Go installation required!** ✅ Binary is downloaded automatically at install time.
 
 ---
 
@@ -184,115 +165,144 @@ app.use('*', atomicdocs(app, 3000));
 
 ### Binary not found error
 
-**Cause:** GitHub Release doesn't exist or binaries weren't uploaded
+```
+Error: Cannot find module '.../bin/atomicdocs-...'
+```
 
-**Fix:** 
-1. Check if the GitHub Release exists at `https://github.com/Lumos-Labs-HQ/atomicdocs/releases/tag/v{VERSION}`
-2. Verify the 6 binary files are attached to the release
-3. Make sure the `release.yml` workflow completed successfully
-4. If binaries are missing, re-run the Release workflow or manually upload them
+**Solution:**
+1. Check GitHub Release exists: `https://github.com/Lumos-Labs-HQ/atomicdocs/releases/tag/v1.0.0`
+2. Re-run: `npm rebuild atomicdocs`
+3. Or manually run: `node node_modules/atomicdocs/install.js`
 
-### 404 when downloading binary
+### Permission denied (Linux/macOS)
 
-**Cause:** Version mismatch between NPM package and GitHub Release
+```
+Error: EACCES: permission denied
+```
 
-**Fix:**
-1. The installed NPM version must have a matching GitHub Release with binaries
-2. Check the version in `node_modules/atomicdocs/package.json`
-3. Verify that release exists: `https://github.com/Lumos-Labs-HQ/atomicdocs/releases/tag/v{VERSION}`
-
-### Permission denied error
-
-**Cause:** Binary not executable (Linux/macOS)
-
-**Fix:** CI automatically runs `chmod +x`, but if manual install:
+**Solution:**
 ```bash
 chmod +x node_modules/atomicdocs/bin/atomicdocs-*
 ```
 
 ### Port 6174 already in use
 
-**Cause:** Another AtomicDocs instance running
-
-**Fix:** Kill existing process or change port in code
-
----
-
-## Development
-
-### Local Testing
-
-```bash
-# Build all binaries locally
-GOOS=windows GOARCH=amd64 go build -o npm/atomicdocs/bin/atomicdocs-win-x64.exe cmd/server/main.go
-GOOS=darwin GOARCH=arm64 go build -o npm/atomicdocs/bin/atomicdocs-darwin-arm64 cmd/server/main.go
-GOOS=linux GOARCH=amd64 go build -o npm/atomicdocs/bin/atomicdocs-linux-x64 cmd/server/main.go
-
-# Test locally
-cd examples/express-demo
-npm install
-npm start
+```
+Error: listen EADDRINUSE: address already in use :::6174
 ```
 
-### Testing CI Locally
+**Solution:**
+```bash
+# Find and kill existing process
+lsof -i :6174
+kill -9 <PID>
+```
 
-Use [act](https://github.com/nektos/act):
+### Docs not loading
+
+1. Ensure server is running
+2. Check routes are registered: `atomicdocs.register(app, PORT)`
+3. Visit `http://localhost:<PORT>/docs`
+
+---
+
+## CI/CD Workflows
+
+### Release Workflow (`release.yml`)
+
+**Trigger:** Git tag push (e.g., `git tag v1.0.0 && git push origin v1.0.0`)
+
+**Steps:**
+1. Checkout code
+2. Setup Go 1.22
+3. Build 6 binaries with `-ldflags="-s -w"` (stripped)
+4. Create GitHub Release
+5. Upload binaries as release assets
+
+### NPM Publish Workflow (`npm-publish.yml`)
+
+**Trigger:** After release workflow completes
+
+**Steps:**
+1. Get version from git tag
+2. Update package.json version
+3. Publish to NPM registry
+
+---
+
+## How to Release (For Maintainers)
 
 ```bash
-act -j build -W .github/workflows/release.yml
+# 1. Update version
+cd npm/atomicdocs
+npm version 1.0.0 --no-git-tag-version
+
+# 2. Commit
+git add .
+git commit -m "Release v1.0.0"
+git push origin main
+
+# 3. Tag and push
+git tag v1.0.0
+git push origin v1.0.0
+
+# 4. Verify (after CI completes)
+npm view atomicdocs version
 ```
 
 ---
 
-## Features
+## GitHub Secrets Required
 
-### What AtomicDocs Provides
-
-#### Core
-- **Zero-config setup** - Just `app.use(atomicdocs())` and you're done
-- **Auto route detection** - Automatically discovers all GET/POST/PUT/DELETE/PATCH routes
-- **Smart schema extraction** - Analyzes handler code to extract request body parameters
-- **OpenAPI 3.0 spec** - Generates valid OpenAPI 3.0 JSON
-- **Interactive Swagger UI** - Full-featured UI with "Try it out" functionality
-- **Real-time API testing** - Test APIs directly from browser
-- **Cross-platform** - Works on Windows, macOS, Linux (x64 & arm64)
-- **No Go installation required** - Pre-built binaries included
-- **Blazing fast** - Built with Go and fasthttp
-- **Lightweight** - Minimal memory footprint
-
-#### Supported Frameworks
-- Express.js
-- Hono
-
-#### Schema Detection
-- Detects `const { x, y } = req.body` (Express)
-- Detects `const { x, y } = await c.req.json()` (Hono)
-- Path parameters (`:id`, `:userId`)
-- Smart type inference (age → integer, price → number)
-- Smart example values (email → user@example.com)
-- Schemas section at bottom (like FastAPI)
-
-#### HTTP Methods
-- GET, POST, PUT, DELETE, PATCH
-
-#### Response Codes
-- 200, 201, 400, 401, 404
+| Secret | Description | How to get |
+|--------|-------------|-----------|
+| `NPM_TOKEN` | NPM automation token | https://www.npmjs.com/settings/YOUR_USERNAME/tokens |
 
 ---
 
-## Version History
+## v1.0.0 Release Notes
 
-### v1.0.0 - Initial Release
+**Release Date:** November 2025
 
-**What's included:**
-- Express.js support
-- Hono support
-- OpenAPI 3.0 generation
-- Swagger UI with Try-it-out
-- Auto schema extraction from handler code
-- Cross-platform binaries (Windows/macOS/Linux, x64/arm64)
-- Smart type inference
-- Path parameter detection
-- Schemas section display
+### 🎉 What's Included
+
+- ✅ **Express.js support** - Full middleware integration
+- ✅ **Hono support** - Full middleware integration
+- ✅ **OpenAPI 3.0 generation** - Valid spec output
+- ✅ **Swagger UI** - Interactive "Try it out" functionality
+- ✅ **Auto schema extraction** - Parses handler code for parameters
+- ✅ **Cross-platform binaries** - Windows, macOS, Linux (x64 & arm64)
+- ✅ **Smart type inference** - Detects integer, number, boolean, string
+- ✅ **Path parameter detection** - `:id`, `:userId`, etc.
+- ✅ **Zod schema support** - Extracts types from Zod schemas
+- ✅ **TypeScript support** - Full type definitions included
+
+### 📊 Binary Sizes
+
+| Platform | Size (approx) |
+|----------|---------------|
+| Windows x64 | ~8 MB |
+| Windows arm64 | ~8 MB |
+| macOS x64 | ~8 MB |
+| macOS arm64 | ~8 MB |
+| Linux x64 | ~8 MB |
+| Linux arm64 | ~8 MB |
+
+### 🔗 Links
+
+- **NPM:** https://www.npmjs.com/package/atomicdocs
+- **GitHub:** https://github.com/Lumos-Labs-HQ/atomicdocs
+- **Issues:** https://github.com/Lumos-Labs-HQ/atomicdocs/issues
 
 ---
+
+## License
+
+MIT © [Lumos Labs HQ](https://github.com/Lumos-Labs-HQ)
+
+---
+
+<div align="center">
+  <h3>🎉 Thank you for using AtomicDocs!</h3>
+  <p>If you find this project useful, please ⭐ star it on GitHub!</p>
+</div>
