@@ -24,7 +24,8 @@ type Server struct {
 }
 
 type Components struct {
-	Schemas map[string]types.Schema `json:"schemas"`
+	Schemas         map[string]types.Schema         `json:"schemas,omitempty"`
+	SecuritySchemes map[string]types.SecurityScheme `json:"securitySchemes,omitempty"`
 }
 
 type PathItem struct {
@@ -36,17 +37,19 @@ type PathItem struct {
 }
 
 type Operation struct {
-	Summary     string                     `json:"summary,omitempty"`
-	Description string                     `json:"description,omitempty"`
-	Tags        []string                   `json:"tags,omitempty"`
-	Parameters  []types.Parameter          `json:"parameters,omitempty"`
-	RequestBody *types.RequestBody         `json:"requestBody,omitempty"`
-	Responses   map[string]types.Response  `json:"responses"`
+	Summary     string                       `json:"summary,omitempty"`
+	Description string                       `json:"description,omitempty"`
+	Tags        []string                     `json:"tags,omitempty"`
+	Parameters  []types.Parameter            `json:"parameters,omitempty"`
+	RequestBody *types.RequestBody           `json:"requestBody,omitempty"`
+	Responses   map[string]types.Response    `json:"responses"`
+	Security    []types.SecurityRequirement  `json:"security,omitempty"`
 }
 
 func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 	paths := make(map[string]PathItem)
 	schemas := make(map[string]types.Schema)
+	securitySchemes := make(map[string]types.SecurityScheme)
 	
 	for _, route := range routes {
 		item := paths[route.Path]
@@ -58,6 +61,7 @@ func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 			Parameters:  route.Parameters,
 			RequestBody: route.RequestBody,
 			Responses:   route.Responses,
+			Security:    route.Security,
 		}
 		
 		if op.Responses == nil {
@@ -65,6 +69,29 @@ func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 				"200": {Description: "Successful response"},
 				"400": {Description: "Bad request"},
 				"404": {Description: "Not found"},
+			}
+		}
+		
+		// Collect security schemes from routes
+		if route.Security != nil {
+			for _, secReq := range route.Security {
+				for secName := range secReq {
+					if secName == "bearerAuth" {
+						securitySchemes["bearerAuth"] = types.SecurityScheme{
+							Type:         "http",
+							Scheme:       "bearer",
+							BearerFormat: "JWT",
+							Description:  "JWT Bearer token authentication",
+						}
+					} else if secName == "apiKeyAuth" {
+						securitySchemes["apiKeyAuth"] = types.SecurityScheme{
+							Type:        "apiKey",
+							In:          "header",
+							Name:        "X-API-Key",
+							Description: "API key authentication",
+						}
+					}
+				}
 			}
 		}
 		
@@ -95,8 +122,14 @@ func Generate(routes []types.RouteInfo, baseURL string) *Spec {
 	}
 	
 	var components *Components
-	if len(schemas) > 0 {
-		components = &Components{Schemas: schemas}
+	if len(schemas) > 0 || len(securitySchemes) > 0 {
+		components = &Components{}
+		if len(schemas) > 0 {
+			components.Schemas = schemas
+		}
+		if len(securitySchemes) > 0 {
+			components.SecuritySchemes = securitySchemes
+		}
 	}
 	
 	return &Spec{

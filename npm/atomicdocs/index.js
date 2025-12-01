@@ -37,12 +37,29 @@ function startGoServer() {
   const binaryName = getBinaryName();
   const binaryPath = path.join(__dirname, 'bin', binaryName);
   
+  // Check if binary exists
+  const fs = require('fs');
+  if (!fs.existsSync(binaryPath)) {
+    console.error(`✗ AtomicDocs: Binary not found at ${binaryPath}`);
+    console.error('  Run "node install.js" in the atomicdocs package directory to download it.');
+    return;
+  }
+  
   goServer = spawn(binaryPath, [], { 
     detached: false,
     stdio: ['ignore', 'pipe', 'pipe']
   });
   
   goServer.on('error', (err) => {
+    console.error('✗ AtomicDocs: Failed to start server:', err.message);
+  });
+  
+  goServer.on('exit', (code) => {
+    if (code !== 0 && code !== null) {
+      console.error(`✗ AtomicDocs: Server exited with code ${code}`);
+    }
+    goServer = null;
+    serverReady = false;
   });
   
   setTimeout(() => { serverReady = true; }, 500);
@@ -52,130 +69,107 @@ function isHono(app) {
   return app && app.routes && Array.isArray(app.routes);
 }
 
+function isExpress(app) {
+  // Check for Express app characteristics
+  return app && (
+    typeof app.use === 'function' &&
+    typeof app.get === 'function' &&
+    typeof app.post === 'function' &&
+    (app._router || app.router || app._routerStack)
+  );
+}
+
 function extractExpressRoutes(app) {
   const routes = [];
-  const fs = require('fs');
-  const path = require('path');
   
-  function getFilePath(handler) {
-    if (!handler) return null;
-    
+  // Try to get router stack - handle different Express versions
+  let stack = null;
+  
+  // Express 4.x
+  if (app._router && app._router.stack) {
+    stack = app._router.stack;
+  }
+  // Express 5.x - router is exposed differently
+  else if (app.router && app.router.stack) {
+    stack = app.router.stack;
+  }
+  // Fallback: try to access via app.get('router')
+  else if (typeof app.get === 'function') {
     try {
-      // Get the source location from the function
-      const funcStr = handler.toString();
-      const lines = funcStr.split('\n');
-      
-      // Try to find file path from function's source
-      const oldPrepare = Error.prepareStackTrace;
-      Error.prepareStackTrace = (_, stack) => stack;
-      const stack = new Error().stack;
-      Error.prepareStackTrace = oldPrepare;
-      
-      // Look through call sites for .ts or .js files (not node_modules)
-      for (let i = 0; i < stack.length; i++) {
-        const fileName = stack[i].getFileName();
-        if (fileName && 
-            (fileName.endsWith('.ts') || fileName.endsWith('.js')) &&
-            !fileName.includes('node_modules') &&
-            !fileName.includes('atomicdocs')) {
-          return fileName;
-        }
+      const router = app.get('router');
+      if (router && router.stack) {
+        stack = router.stack;
       }
-      
-      // Fallback: try to parse from stack string
-      const err = new Error();
-      const stackLines = err.stack.split('\n');
-      for (let line of stackLines) {
-        const match = line.match(/\((.+\.(ts|js)):(\d+):(\d+)\)/);
-        if (match && !match[1].includes('node_modules') && !match[1].includes('atomicdocs')) {
-          return match[1];
-        }
-      }
-    } catch (e) {
-    }
-    return null;
+    } catch (e) {}
   }
   
-  function extractImports(filePath) {
-    if (!filePath || !fs.existsSync(filePath)) return [];
-    
-    try {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const imports = [];
-      
-      // Match: import { X, Y } from './file'
-      const importRegex = /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g;
-      let match;
-      while ((match = importRegex.exec(content)) !== null) {
-        const names = match[1].split(',').map(n => n.trim());
-        const from = match[2];
-        names.forEach(name => {
-          imports.push({ name, from });
-        });
-      }
-      
-      return imports;
-    } catch (e) {
-      return [];
-    }
+  if (!stack) {
+    console.warn('AtomicDocs: Could not find Express router stack. Routes may not be detected.');
+    return routes;
   }
   
-  function extractFromStack(stack, basePath = '') {
-    stack.forEach(layer => {
+  function extractFromStack(layerStack, basePath = '') {
+    if (!layerStack || !Array.isArray(layerStack)) return;
+    
+    layerStack.forEach(layer => {
+      if (!layer) return;
+      
+      // Direct route
       if (layer.route) {
-        const handler = layer.route.stack[0]?.handle;
+        const routePath = layer.route.path;
+        const handler = layer.route.stack && layer.route.stack[0] ? layer.route.stack[0].handle : null;
         const handlerCode = handler ? handler.toString() : '';
         
-        // Detect controller file from route path
-        let filePath = null;
-        const routePath = basePath + layer.route.path;
-        const cwd = process.cwd();
-        
-        // Try to find controller file based on route
-        const possiblePaths = [
-          path.join(cwd, 'src/controllers/auth.controller.ts'),
-          path.join(cwd, 'src/controllers/auth.controller.js'),
-          path.join(cwd, 'src/controllers/user.controller.ts'),
-          path.join(cwd, 'src/controllers/user.controller.js'),
-          path.join(cwd, 'src/controllers/post.controller.ts'),
-          path.join(cwd, 'src/controllers/post.controller.js'),
-        ];
-        
-        // Match route to controller
-        if (routePath.includes('/auth')) {
-          filePath = possiblePaths.find(p => p.includes('auth') && fs.existsSync(p));
-        } else if (routePath.includes('/user')) {
-          filePath = possiblePaths.find(p => p.includes('user') && fs.existsSync(p));
-        } else if (routePath.includes('/post')) {
-          filePath = possiblePaths.find(p => p.includes('post') && fs.existsSync(p));
-        }
-        
-        const imports = filePath ? extractImports(filePath) : [];
-        
-        Object.keys(layer.route.methods).forEach(method => {
-          if (layer.route.methods[method]) {
+        // Get methods from route
+        const methods = layer.route.methods || {};
+        Object.keys(methods).forEach(method => {
+          if (methods[method]) {
             routes.push({
               method: method.toUpperCase(),
-              path: basePath + layer.route.path,
-              handler: handlerCode,
-              filePath: filePath || 'unknown',
-              imports: imports
+              path: basePath + routePath,
+              handler: handlerCode
             });
           }
         });
-      } else if (layer.name === 'router' && layer.handle.stack) {
-        const routePath = layer.regexp.source
-          .replace('\\/?', '')
-          .replace('(?=\\/|$)', '')
-          .replace(/\\\//g, '/')
-          .replace(/\^/g, '')
-          .replace(/\$/g, '');
-        extractFromStack(layer.handle.stack, routePath);
+      }
+      // Nested router (app.use('/prefix', router))
+      else if (layer.name === 'router' && layer.handle && layer.handle.stack) {
+        let routePath = '';
+        
+        // Extract path from regexp
+        if (layer.regexp) {
+          const regexpStr = layer.regexp.source || layer.regexp.toString();
+          routePath = regexpStr
+            .replace(/^\^/, '')
+            .replace(/\\\/\?\(\?=\\\/\|\$\)$/, '')
+            .replace(/\(\?:\(\[\^\\\/\]\+\?\)\)/g, ':param')
+            .replace(/\\\//g, '/')
+            .replace(/\?(?:\=.*)?$/g, '');
+        }
+        
+        // Handle Express 5 path property
+        if (layer.path) {
+          routePath = layer.path;
+        }
+        
+        extractFromStack(layer.handle.stack, basePath + routePath);
+      }
+      // Mounted app (app.use('/prefix', anotherApp))
+      else if (layer.name === 'mounted_app' && layer.handle && layer.handle._router) {
+        let routePath = '';
+        if (layer.regexp) {
+          const regexpStr = layer.regexp.source || layer.regexp.toString();
+          routePath = regexpStr
+            .replace(/^\^/, '')
+            .replace(/\\\/\?\(\?=\\\/\|\$\)$/, '')
+            .replace(/\\\//g, '/');
+        }
+        extractFromStack(layer.handle._router.stack, basePath + routePath);
       }
     });
   }
   
-  extractFromStack(app._router.stack);
+  extractFromStack(stack);
   return routes.filter(r => !r.path.startsWith('/docs'));
 }
 
@@ -188,44 +182,7 @@ function extractHonoRoutes(app) {
 }
 
 function registerRoutes(routes, port) {
-  const fs = require('fs');
-  const path = require('path');
-  const schemaFiles = {};
-  
-  
-  // Collect all schema files
-  routes.forEach(route => {
-    if (route.imports && route.filePath) {
-      route.imports.forEach(imp => {
-        const dir = path.dirname(route.filePath);
-        let resolved = path.resolve(dir, imp.from);
-        
-        // Try extensions
-        const extensions = ['.ts', '.js', '.tsx', '.jsx'];
-        for (let ext of extensions) {
-          if (fs.existsSync(resolved + ext)) {
-            resolved = resolved + ext;
-            break;
-          }
-        }
-        
-        if (fs.existsSync(resolved) && !schemaFiles[resolved]) {
-          try {
-            const content = fs.readFileSync(resolved, 'utf-8');
-            schemaFiles[resolved] = content;
-          } catch (e) {
-          }
-        }
-      });
-    }
-  });
-  
-  
-  const data = JSON.stringify({ 
-    routes, 
-    port,
-    schemaFiles 
-  });
+  const data = JSON.stringify({ routes, port });
   
   const req = http.request({
     hostname: 'localhost',
@@ -239,6 +196,7 @@ function registerRoutes(routes, port) {
   });
   
   req.on('error', (err) => {
+    // Silently ignore connection errors
   });
   
   req.write(data);
@@ -324,8 +282,16 @@ module.exports.register = function(app, port) {
     setTimeout(() => module.exports.register(app, port), 100);
     return;
   }
-  const routes = extractExpressRoutes(app);
-  routes.forEach(r => {
-  });
-  registerRoutes(routes, port);
+  
+  try {
+    const routes = extractExpressRoutes(app);
+    if (routes.length > 0) {
+      console.log(`✓ AtomicDocs: Registered ${routes.length} routes`);
+    } else {
+      console.warn('⚠ AtomicDocs: No routes found. Make sure routes are defined before calling register()');
+    }
+    registerRoutes(routes, port);
+  } catch (err) {
+    console.error('✗ AtomicDocs: Failed to extract routes:', err.message);
+  }
 };
