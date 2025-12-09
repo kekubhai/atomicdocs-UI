@@ -15,11 +15,11 @@ func AnalyzeRoute(route types.RouteInfo, schemaFiles map[string]string) types.Ro
 	
 	// Extract request body for POST, PUT, PATCH
 	if route.Method == "POST" || route.Method == "PUT" || route.Method == "PATCH" {
-		route.RequestBody = extractRequestBodyWithSchemas(route, schemaFiles)
+		if route.RequestBody == nil { route.RequestBody = extractRequestBodyWithSchemas(route, schemaFiles) }
 	}
 	
 	// Extract responses with content types
-	route.Responses = extractResponses(route)
+	if len(route.Responses) == 0 { route.Responses = extractResponses(route) }
 	
 	// Extract security requirements (auth tokens, etc.)
 	route.Security = extractSecurity(route)
