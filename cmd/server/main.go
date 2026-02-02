@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	
 	"github.com/valyala/fasthttp"
 	"github.com/yourusername/atomicdocs/internal/middleware"
 	"github.com/yourusername/atomicdocs/internal/registry"
@@ -13,7 +15,12 @@ func main() {
 	
 	requestHandler := func(ctx *fasthttp.RequestCtx) {
 		path := string(ctx.Path())
-		fmt.Printf("Request: %s\n", path)
+		method := string(ctx.Method())
+		
+		fmt.Printf("Request: %s %s\n", method, path)
+		
+		// Set JSON content type for all responses
+		ctx.SetContentType("application/json")
 		
 		switch path {
 		case "/api/register":
@@ -24,9 +31,13 @@ func main() {
 			handler.GetSpec(ctx)
 		default:
 			ctx.SetStatusCode(fasthttp.StatusNotFound)
+			ctx.SetBody([]byte(`{"error": "Not found"}`))
 		}
 	}
 	
 	fmt.Println("AtomicDocs server starting on :6174")
-	fasthttp.ListenAndServe(":6174", requestHandler)
+	
+	if err := fasthttp.ListenAndServe(":6174", requestHandler); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
