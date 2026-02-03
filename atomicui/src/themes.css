@@ -1,0 +1,181 @@
+/* Theme CSS variables – 5 sharply differentiated documentation themes */
+
+:root {
+  --docs-font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --docs-font-sans: system-ui, -apple-system, sans-serif;
+}
+
+/* Terminal – dark, matrix green, sharp corners, scanline feel */
+[data-theme="terminal"] {
+  --docs-bg: #0a0e0a;
+  --docs-surface: #0f1410;
+  --docs-surface-hover: #151c12;
+  --docs-text: #c8ff9e;
+  --docs-text-muted: #5a7a3a;
+  --docs-accent: #39ff14;
+  --docs-accent-soft: rgba(57, 255, 20, 0.18);
+  --docs-border: #2d4a1f;
+  --docs-code-bg: #050805;
+  --docs-radius: 2px;
+  --docs-shadow: 0 0 0 1px rgba(57, 255, 20, 0.12);
+  --docs-font-weight: 500;
+  --docs-header-border: 2px solid var(--docs-accent);
+}
+
+/* Paper – light, warm gray, soft radius, reading focus */
+[data-theme="paper"] {
+  --docs-bg: #f5f2eb;
+  --docs-surface: #fefdfb;
+  --docs-surface-hover: #f0ebe0;
+  --docs-text: #1a1814;
+  --docs-text-muted: #6b6560;
+  --docs-accent: #2c2825;
+  --docs-accent-soft: rgba(44, 40, 37, 0.12);
+  --docs-border: #c9c2b5;
+  --docs-code-bg: #e8e4dc;
+  --docs-radius: 4px;
+  --docs-shadow: 0 1px 3px rgba(26, 24, 20, 0.08);
+  --docs-font-weight: 400;
+  --docs-header-border: 1px solid var(--docs-border);
+}
+
+/* Ocean – deep blue, cyan accent, rounded, modern */
+[data-theme="ocean"] {
+  --docs-bg: #0c1929;
+  --docs-surface: #132f4c;
+  --docs-surface-hover: #1a3d5c;
+  --docs-text: #e3f2fd;
+  --docs-text-muted: #90caf9;
+  --docs-accent: #29b6f6;
+  --docs-accent-soft: rgba(41, 182, 246, 0.22);
+  --docs-border: #1565c0;
+  --docs-code-bg: #0a1628;
+  --docs-radius: 10px;
+  --docs-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --docs-font-weight: 500;
+  --docs-header-border: 2px solid var(--docs-accent);
+}
+
+/* Sunset – warm orange/pink, friendly, rounded */
+[data-theme="sunset"] {
+  --docs-bg: #1c0f0a;
+  --docs-surface: #2d1810;
+  --docs-surface-hover: #3d2218;
+  --docs-text: #fff0e6;
+  --docs-text-muted: #e8a87c;
+  --docs-accent: #ff8c42;
+  --docs-accent-soft: rgba(255, 140, 66, 0.2);
+  --docs-border: #b85c38;
+  --docs-code-bg: #140a06;
+  --docs-radius: 12px;
+  --docs-shadow: 0 4px 16px rgba(255, 100, 50, 0.15);
+  --docs-font-weight: 500;
+  --docs-header-border: 2px solid var(--docs-accent);
+}
+
+/* Monochrome – high contrast, minimal radius, accessible */
+[data-theme="monochrome"] {
+  --docs-bg: #000000;
+  --docs-surface: #0c0c0c;
+  --docs-surface-hover: #1a1a1a;
+  --docs-text: #ffffff;
+  --docs-text-muted: #737373;
+  --docs-accent: #3b82f6;
+  --docs-accent-soft: rgba(59, 130, 246, 0.25);
+  --docs-border: #262626;
+  --docs-code-bg: #000000;
+  --docs-radius: 4px;
+  --docs-shadow: 0 0 0 1px var(--docs-border);
+  --docs-font-weight: 600;
+  --docs-header-border: 2px solid var(--docs-accent);
+}
+
+/* Apply theme variables to app */
+.app-theme {
+  background-color: var(--docs-bg);
+  color: var(--docs-text);
+  font-family: var(--docs-font-sans);
+  font-weight: var(--docs-font-weight);
+  min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.app-theme .theme-accent {
+  color: var(--docs-accent);
+}
+
+.app-theme .theme-surface {
+  background-color: var(--docs-surface);
+  border: 1px solid var(--docs-border);
+  border-radius: var(--docs-radius);
+  box-shadow: var(--docs-shadow);
+}
+
+.app-theme .theme-code {
+  background-color: var(--docs-code-bg);
+  font-family: var(--docs-font-mono);
+  border: 1px solid var(--docs-border);
+  border-radius: var(--docs-radius);
+}
+
+.app-theme .theme-muted {
+  color: var(--docs-text-muted);
+}
+
+.app-theme button.theme-button {
+  background-color: var(--docs-surface);
+  color: var(--docs-text);
+  border: 1px solid var(--docs-border);
+  border-radius: var(--docs-radius);
+  font-weight: var(--docs-font-weight);
+}
+
+.app-theme button.theme-button:hover {
+  background-color: var(--docs-surface-hover);
+  border-color: var(--docs-accent);
+}
+
+.app-theme button.theme-button.active {
+  background-color: var(--docs-accent-soft);
+  border-color: var(--docs-accent);
+  color: var(--docs-accent);
+  box-shadow: var(--docs-shadow);
+}
+
+.app-theme input,
+.app-theme textarea {
+  background-color: var(--docs-surface);
+  color: var(--docs-text);
+  border: 1px solid var(--docs-border);
+  border-radius: var(--docs-radius);
+}
+
+.app-theme input::placeholder,
+.app-theme textarea::placeholder {
+  color: var(--docs-text-muted);
+}
+
+.app-theme input:focus,
+.app-theme textarea:focus {
+  outline: none;
+  border-color: var(--docs-accent);
+  box-shadow: 0 0 0 2px var(--docs-accent-soft);
+}
+
+.app-theme .theme-header {
+  border-bottom: var(--docs-header-border);
+  background-color: var(--docs-surface);
+}
+
+.app-theme .theme-suggestion-chip {
+  background-color: var(--docs-surface);
+  border: 1px solid var(--docs-border);
+  color: var(--docs-text);
+  border-radius: var(--docs-radius);
+}
+
+.app-theme .theme-suggestion-chip:hover {
+  border-color: var(--docs-accent);
+  color: var(--docs-accent);
+  background-color: var(--docs-accent-soft);
+}

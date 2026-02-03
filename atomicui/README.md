@@ -1,3 +1,27 @@
+# AtomicDocs UI – Generative API Documentation
+
+React + Tambo-based docs UI for AtomicDocs. Developers ask in natural language (e.g. “How do I create a user?”, “Show me curl for POST /users”) and the AI renders **EndpointCard**, **CodeSnippet**, **SchemaViewer**, or **TryItPanel** as needed. Five themes (Terminal, Paper, Ocean, Sunset, Monochrome) are available via the theme selector.
+
+## Setup
+
+1. Copy `.env.example` to `.env` and set:
+   - `VITE_TAMBO_API_KEY` – get one at [tambo.co/dashboard](https://tambo.co/dashboard)
+   - `VITE_OPENAPI_URL` (optional) – defaults to `http://localhost:3000/docs/json`
+2. Run your backend with AtomicDocs (e.g. Express demo) so `/docs/json` serves the OpenAPI spec.
+3. `npm install` then `npm run dev`. Open the app and ask about your API.
+
+## Themes
+
+- **Terminal** – Dark, green accent, monospace feel  
+- **Paper** – Light, minimal, reading-focused  
+- **Ocean** – Blue/slate, calm and professional  
+- **Sunset** – Warm, friendly, modern  
+- **Monochrome** – High contrast, accessible  
+
+Theme choice is stored in `localStorage` and applied via CSS variables.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
