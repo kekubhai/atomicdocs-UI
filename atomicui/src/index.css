@@ -25,6 +25,13 @@ body {
   color: #e6edf3;
 }
 
+/* Ensure app-theme applies background */
+.app-theme {
+  min-height: 100vh;
+  background-color: var(--docs-bg, #0d1117);
+  color: var(--docs-text, #e6edf3);
+}
+
 #root {
   min-height: 100vh;
 }
