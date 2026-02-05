@@ -3,6 +3,10 @@
 :root {
   --docs-font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   --docs-font-sans: system-ui, -apple-system, sans-serif;
+  --docs-font-size-base: 16px;
+  --docs-line-height: 1.5;
+  --docs-letter-spacing: normal;
+  --docs-heading-weight: 600;
 }
 
 /* Terminal – dark, matrix green, sharp corners, scanline feel */
@@ -95,9 +99,22 @@
   background-color: var(--docs-bg);
   color: var(--docs-text);
   font-family: var(--docs-font-sans);
+  font-size: var(--docs-font-size-base);
   font-weight: var(--docs-font-weight);
+  line-height: var(--docs-line-height);
+  letter-spacing: var(--docs-letter-spacing);
   min-height: 100vh;
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.app-theme h1,
+.app-theme h2,
+.app-theme h3,
+.app-theme h4,
+.app-theme h5,
+.app-theme h6 {
+  font-weight: var(--docs-heading-weight);
+  letter-spacing: var(--docs-letter-spacing);
 }
 
 .app-theme .theme-accent {

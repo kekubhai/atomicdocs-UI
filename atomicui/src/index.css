@@ -25,11 +25,15 @@ body {
   color: #e6edf3;
 }
 
-/* Ensure app-theme applies background */
+/* Ensure app-theme applies background and typography */
 .app-theme {
   min-height: 100vh;
   background-color: var(--docs-bg, #0d1117);
   color: var(--docs-text, #e6edf3);
+  font-family: var(--docs-font-sans);
+  font-size: var(--docs-font-size-base);
+  line-height: var(--docs-line-height);
+  letter-spacing: var(--docs-letter-spacing);
 }
 
 #root {
